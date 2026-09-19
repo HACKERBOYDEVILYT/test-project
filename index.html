@@ -3,178 +3,141 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>বাংলা টু Gibberlink অডিও ডাউনলোডার</title>
-    <!-- স্ট্যাবল ও সরাসরি কার্যকর GGWave CDN ব্যবহার করা হচ্ছে -->
+    <title>Gibberlink Audio Generator - AI Protocol Tool</title>
+    <link href="https://googleapis.com" rel="stylesheet">
+    <link rel="stylesheet" href="https://cloudflare.com">
     <script src="https://cloudflare.com"></script>
     <style>
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #0f172a;
-            color: #f8fafc;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            margin: 0;
+        :root {
+            --bg: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
+            --panel: rgba(30, 41, 59, 0.7);
+            --border: rgba(255, 255, 255, 0.08);
+            --primary: #38bdf8;
+            --primary-h: #0ea5e9;
+            --success: #10b981;
+            --success-h: #059669;
+            --text: #f8fafc;
         }
-        .container {
-            background-color: #1e293b;
-            padding: 30px;
-            border-radius: 12px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
-            text-align: center;
-            max-width: 400px;
-            width: 100%;
-        }
-        h2 { color: #38bdf8; margin-bottom: 20px; }
-        textarea {
-            width: 90%;
-            height: 80px;
-            padding: 10px;
-            border-radius: 6px;
-            border: 1px solid #475569;
-            background-color: #334155;
-            color: #fff;
-            font-size: 16px;
-            resize: none;
-        }
-        button {
-            width: 95%;
-            color: white;
-            border: none;
-            padding: 12px;
-            font-size: 16px;
-            border-radius: 6px;
-            cursor: pointer;
-            margin-top: 12px;
-            transition: 0.2s;
-            font-weight: bold;
-        }
-        .play-btn { background-color: #0284c7; }
-        .play-btn:hover { background-color: #0369a1; }
-        .download-btn { background-color: #16a34a; display: none; }
-        .download-btn:hover { background-color: #15803d; }
-        .status { margin-top: 10px; font-size: 14px; color: #a1a1aa; }
-        .footer { margin-top: 20px; font-size: 12px; color: #64748b; }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Plus Jakarta Sans', 'Noto Sans Bengali', sans-serif; }
+        body { background: var(--bg); color: var(--text); min-height: 100vh; display: flex; justify-content: center; align-items: center; padding: 20px; }
+        .app-card { background: var(--panel); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border: 1px solid var(--border); padding: 40px 30px; border-radius: 24px; box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4); max-width: 460px; width: 100%; text-align: center; transition: 0.3s; }
+        .app-card:hover { transform: translateY(-2px); }
+        .logo-icon { font-size: 2.5rem; color: var(--primary); margin-bottom: 12px; }
+        h1 { font-size: 1.6rem; font-weight: 700; background: linear-gradient(to right, #fff, var(--primary)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 6px; }
+        .sub { font-size: 0.9rem; color: #94a3b8; margin-bottom: 25px; }
+        textarea { width: 100%; height: 110px; padding: 16px; border-radius: 14px; border: 1px solid var(--border); background: rgba(15, 23, 42, 0.6); color: #fff; font-size: 1rem; resize: none; outline: none; transition: 0.2s; }
+        textarea:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.15); }
+        .meta { display: flex; justify-content: space-between; font-size: 0.75rem; color: #94a3b8; margin-top: 6px; }
+        .status-badge { display: inline-flex; align-items: center; gap: 8px; font-size: 0.85rem; padding: 10px 16px; border-radius: 30px; background: rgba(255, 255, 255, 0.04); margin: 20px 0; width: 100%; justify-content: center; color: #f59e0b; font-weight: 500; border: 1px solid rgba(255, 255, 255, 0.02); }
+        .status-badge.ready { color: var(--success); background: rgba(16, 185, 129, 0.06); }
+        .btn { width: 100%; padding: 14px; font-size: 1rem; font-weight: 600; border-radius: 12px; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; transition: 0.2s; margin-bottom: 12px; }
+        .btn-p { background: var(--primary); color: #0f172a; }
+        .btn-p:hover:not(:disabled) { background: var(--primary-h); }
+        .btn-p:disabled { opacity: 0.5; cursor: not-allowed; }
+        .btn-s { background: var(--success); color: #fff; display: none; }
+        .btn-s:hover { background: var(--success-h); }
+        .foot { margin-top: 24px; font-size: 0.75rem; color: #64748b; letter-spacing: 0.5px; }
     </style>
 </head>
 <body>
 
-<div class="container">
-    <h2>Gibberlink অডিও জেনারেটর 🚀</h2>
-    <p>বাংলায় লিখে অডিও তৈরি ও ডাউনলোড করুন:</p>
-    <textarea id="textInput" placeholder="এখানে বাংলা লিখুন... (যেমন: আমার ফোন)"></textarea>
-    <br>
-    <div id="statusMessage" class="status">লাইব্রেরি লোড হচ্ছে... অনুগ্রহ করে অপেক্ষা করুন।</div>
-    <button id="playBtn" class="play-btn" disabled>সাউন্ড প্লে করুন</button>
-    <button id="downloadBtn" class="download-btn">📥 অডিও ফাইল ডাউনলোড করুন</button>
-    <div class="footer">Powered by ggwave Technology</div>
-</div>
+    <div class="app-card">
+        <i class="fa-solid fa-circle-nodes logo-icon"></i>
+        <h1>Gibberlink Protocol</h1>
+        <div class="sub">AI-to-AI Audio Data Link Client</div>
+        
+        <textarea id="txt" maxlength="140" placeholder="বার্তাটি লিখুন (যেমন: সিস্টেম ট্র্যাকিং একটিভ)..."></textarea>
+        <div class="meta">
+            <span id="cnt">0 / 140 ক্যারেক্টার</span>
+            <span>UTF-8 Engine</span>
+        </div>
+        
+        <div id="st" class="status-badge">
+            <i class="fa-solid fa-spinner fa-spin"></i> <span id="stTxt">Initializing Protocol Stack...</span>
+        </div>
+        
+        <button id="pBtn" class="btn btn-p" disabled>
+            <i class="fa-solid fa-waveform-lines"></i> অডিও সিগন্যাল প্লে করুন
+        </button>
+        <button id="dBtn" class="btn btn-s">
+            <i class="fa-solid fa-arrow-down-to-line"></i> অডিও ফাইল ডাউনলোড (.WAV)
+        </button>
+        
+        <div class="foot">SECURE AUDIBLE COMMUNICATION INTERFACE</div>
+    </div>
 
 <script>
-    let ggwaveContext = null;
-    let ggwave = null;
-    let instance = null;
-    let currentWavBlob = null;
+    const App = { ctx: null, gg: null, inst: null, blob: null };
+    const dom = {
+        txt: document.getElementById('txt'), cnt: document.getElementById('cnt'),
+        st: document.getElementById('st'), stTxt: document.getElementById('stTxt'),
+        pBtn: document.getElementById('pBtn'), dBtn: document.getElementById('dBtn')
+    };
 
-    // অল্টারনেটিভ মেথডে লোড চেক করা
-    function initGGWave() {
+    dom.txt.addEventListener('input', (e) => { dom.cnt.textContent = `${e.target.value.length} / 140 ক্যারেক্টার`; });
+
+    function init() {
         if (typeof ggwave_factory === 'function') {
-            ggwave_factory().then(function(obj) {
-                ggwave = obj;
-                let parameters = ggwave.getDefaultParameters();
-                instance = ggwave.init(parameters);
-                
-                // সাকসেস হলে বাটন একটিভ করা এবং মেসেজ চেঞ্জ করা
-                document.getElementById('playBtn').disabled = false;
-                document.getElementById('statusMessage').innerHTML = "✅ লাইব্রেরি রেডি! এখন টাইপ করুন।";
-                document.getElementById('statusMessage').style.color = "#4ade80";
-            }).catch(err => {
-                document.getElementById('statusMessage').innerHTML = "❌ লোড হতে ব্যর্থ হয়েছে। পেজ রিফ্রেশ দিন।";
-                document.getElementById('statusMessage').style.color = "#f87171";
+            ggwave_factory().then(obj => {
+                App.gg = obj;
+                App.inst = App.gg.init(App.gg.getDefaultParameters());
+                dom.st.className = "status-badge ready";
+                dom.stTxt.textContent = "Protocol Stack Ready";
+                dom.st.querySelector('i').className = "fa-solid fa-circle-check";
+                dom.pBtn.disabled = false;
+            }).catch(() => {
+                dom.st.className = "status-badge"; dom.st.style.color = "#ef4444";
+                dom.stTxt.textContent = "Engine Fail."; dom.st.querySelector('i').className = "fa-solid fa-circle-exclamation";
             });
-        } else {
-            // যদি মেইন ফ্যাক্টরি কাজ না করে তবে সরাসরি অবজেক্ট চেক করা
-            setTimeout(initGGWave, 500); 
-        }
+        } else { setTimeout(init, 300); }
     }
 
-    window.onload = initGGWave;
-
-    function bufferToWav(buffer) {
-        let length = buffer.length * 2;
-        let view = new DataView(new ArrayBuffer(44 + length));
+    function makeWav(buffer) {
+        const len = buffer.length * 2;
+        const view = new DataView(new ArrayBuffer(44 + len));
+        const str = (pos, s) => { for (let i=0; i<s.length; i++) view.setUint8(pos+i, s.charCodeAt(i)); };
         
-        view.setUint32(0, 0x46464952, true); 
-        view.setUint32(4, 36 + length, true);
-        view.setUint32(8, 0x45564157, true); 
-        view.setUint32(12, 0x20746d66, true); 
-        view.setUint32(16, 16, true);
-        view.setUint16(20, 1, true);
-        view.setUint16(22, 1, true);
-        view.setUint32(24, 48000, true); 
-        view.setUint32(28, 48000 * 2, true);
-        view.setUint16(32, 2, true);
-        view.setUint16(34, 16, true);
-        view.setUint32(36, 0x61746164, true); 
-        view.setUint40 ? view.setUint32(40, length, true) : view.setUint32(40, length, true);
+        str(0, 'RIFF'); view.setUint32(4, 36 + len, true); str(8, 'WAVE'); str(12, 'fmt ');
+        view.setUint32(16, 16, true); view.setUint16(20, 1, true); view.setUint16(22, 1, true);
+        view.setUint32(24, 48000, true); view.setUint32(28, 96000, true); view.setUint16(32, 2, true);
+        view.setUint16(34, 16, true); str(36, 'data'); view.setUint32(40, len, true);
 
-        let offset = 44;
-        for (let i = 0; i < buffer.length; i++, offset += 2) {
+        for (let i=0, p=44; i<buffer.length; i++, p+=2) {
             let s = Math.max(-1, Math.min(1, buffer[i]));
-            view.setInt16(offset, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
+            view.setInt16(p, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
         }
         return new Blob([view], { type: 'audio/wav' });
     }
 
-    document.getElementById('playBtn').addEventListener('click', () => {
-        const text = document.getElementById('textInput').value.trim();
-        if (!text) {
-            alert('দয়া করে প্রথমে কিছু লিখুন!');
-            return;
-        }
-
-        if (!ggwaveContext) {
-            ggwaveContext = new (window.AudioContext || window.webkitAudioContext)({sampleRate: 48000});
-        }
+    dom.pBtn.addEventListener('click', () => {
+        const val = dom.txt.value.trim();
+        if (!val) return;
+        if (!App.ctx) App.ctx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 48000 });
 
         try {
-            // সেফ মোডে এনকোডিং রান করা
-            const waveform = ggwave.encode(instance, text, 1, 10);
-            
-            if (!waveform || waveform.length === 0) {
-                alert("অডিও তৈরি করা যায়নি।");
-                return;
-            }
+            const wave = App.gg.encode(App.inst, val, 1, 10);
+            if (!wave || wave.length === 0) return;
 
-            const buf = ggwaveContext.createBuffer(1, waveform.length, 48000);
-            buf.getChannelData(0).set(waveform);
-            const source = ggwaveContext.createBufferSource();
-            source.buffer = buf;
-            source.connect(ggwaveContext.destination);
-            source.start();
+            const buf = App.ctx.createBuffer(1, wave.length, 48000);
+            buf.getChannelData(0).set(wave);
+            const src = App.ctx.createBufferSource();
+            src.buffer = buf; src.connect(App.ctx.destination); src.start();
 
-            currentWavBlob = bufferToWav(waveform);
-            document.getElementById('downloadBtn').style.display = 'block';
-
-        } catch (e) {
-            console.error(e);
-            alert("প্রসেসিং এরর! অনুগ্রহ করে আবার চেষ্টা করুন।");
-        }
+            App.blob = makeWav(wave);
+            dom.dBtn.style.display = 'flex';
+        } catch (e) { console.error(e); }
     });
 
-    document.getElementById('downloadBtn').addEventListener('click', () => {
-        if (!currentWavBlob) return;
-        const url = URL.createObjectURL(currentWavBlob);
+    dom.dBtn.addEventListener('click', () => {
+        if (!App.blob) return;
+        const url = URL.createObjectURL(App.blob);
         const a = document.createElement('a');
-        a.href = url;
-        a.download = 'gibberlink_sound.wav';
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
+        a.href = url; a.download = `gibberlink_${Date.now()}.wav`;
+        document.body.appendChild(a); a.click();
+        document.body.removeChild(a); URL.revokeObjectURL(url);
     });
-</script>
 
+    document.addEventListener('DOMContentLoaded', init);
+</script>
 </body>
 </html>

@@ -6,7 +6,6 @@
     <title>Gibberlink Audio Generator - AI Protocol Tool</title>
     <link href="https://googleapis.com" rel="stylesheet">
     <link rel="stylesheet" href="https://cloudflare.com">
-    <script src="https://cloudflare.com"></script>
     <style>
         :root {
             --bg: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
@@ -28,12 +27,10 @@
         textarea { width: 100%; height: 110px; padding: 16px; border-radius: 14px; border: 1px solid var(--border); background: rgba(15, 23, 42, 0.6); color: #fff; font-size: 1rem; resize: none; outline: none; transition: 0.2s; }
         textarea:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.15); }
         .meta { display: flex; justify-content: space-between; font-size: 0.75rem; color: #94a3b8; margin-top: 6px; }
-        .status-badge { display: inline-flex; align-items: center; gap: 8px; font-size: 0.85rem; padding: 10px 16px; border-radius: 30px; background: rgba(255, 255, 255, 0.04); margin: 20px 0; width: 100%; justify-content: center; color: #f59e0b; font-weight: 500; border: 1px solid rgba(255, 255, 255, 0.02); }
-        .status-badge.ready { color: var(--success); background: rgba(16, 185, 129, 0.06); }
+        .status-badge { display: inline-flex; align-items: center; gap: 8px; font-size: 0.85rem; padding: 10px 16px; border-radius: 30px; margin: 20px 0; width: 100%; justify-content: center; font-weight: 500; border: 1px solid rgba(255, 255, 255, 0.02); color: var(--success); background: rgba(16, 185, 129, 0.06); }
         .btn { width: 100%; padding: 14px; font-size: 1rem; font-weight: 600; border-radius: 12px; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; transition: 0.2s; margin-bottom: 12px; }
         .btn-p { background: var(--primary); color: #0f172a; }
-        .btn-p:hover:not(:disabled) { background: var(--primary-h); }
-        .btn-p:disabled { opacity: 0.5; cursor: not-allowed; }
+        .btn-p:hover { background: var(--primary-h); }
         .btn-s { background: var(--success); color: #fff; display: none; }
         .btn-s:hover { background: var(--success-h); }
         .foot { margin-top: 24px; font-size: 0.75rem; color: #64748b; letter-spacing: 0.5px; }
@@ -49,14 +46,14 @@
         <textarea id="txt" maxlength="140" placeholder="বার্তাটি লিখুন (যেমন: সিস্টেম ট্র্যাকিং একটিভ)..."></textarea>
         <div class="meta">
             <span id="cnt">0 / 140 ক্যারেক্টার</span>
-            <span>UTF-8 Engine</span>
+            <span>Pure Native Engine</span>
         </div>
         
         <div id="st" class="status-badge">
-            <i class="fa-solid fa-spinner fa-spin"></i> <span id="stTxt">Initializing Protocol Stack...</span>
+            <i class="fa-solid fa-circle-check"></i> <span id="stTxt">✅ Protocol Engine Ready</span>
         </div>
         
-        <button id="pBtn" class="btn btn-p" disabled>
+        <button id="pBtn" class="btn btn-p">
             <i class="fa-solid fa-waveform-lines"></i> অডিও সিগন্যাল প্লে করুন
         </button>
         <button id="dBtn" class="btn btn-s">
@@ -67,39 +64,69 @@
     </div>
 
 <script>
-    const App = { ctx: null, gg: null, inst: null, blob: null };
+    const App = { ctx: null, audioBuffer: null, wavBlob: null };
     const dom = {
         txt: document.getElementById('txt'), cnt: document.getElementById('cnt'),
         st: document.getElementById('st'), stTxt: document.getElementById('stTxt'),
         pBtn: document.getElementById('pBtn'), dBtn: document.getElementById('dBtn')
     };
 
-    dom.txt.addEventListener('input', (e) => { dom.cnt.textContent = `${e.target.value.length} / 140 ক্যারেক্টার`; });
+    dom.txt.addEventListener('input', (e) => { 
+        dom.cnt.textContent = `${e.target.value.length} / 140 ক্যারেক্টার`; 
+    });
 
-    function init() {
-        if (typeof ggwave_factory === 'function') {
-            ggwave_factory().then(obj => {
-                App.gg = obj;
-                App.inst = App.gg.init(App.gg.getDefaultParameters());
-                dom.st.className = "status-badge ready";
-                dom.stTxt.textContent = "Protocol Stack Ready";
-                dom.st.querySelector('i').className = "fa-solid fa-circle-check";
-                dom.pBtn.disabled = false;
-            }).catch(() => {
-                dom.st.className = "status-badge"; dom.st.style.color = "#ef4444";
-                dom.stTxt.textContent = "Engine Fail."; dom.st.querySelector('i').className = "fa-solid fa-circle-exclamation";
-            });
-        } else { setTimeout(init, 300); }
+    // স্ট্রিংকে টেক্সট থেকে বাইনারি ডেটাতে রূপান্তর করার মেথড
+    function textToBinary(text) {
+        const encoder = new TextEncoder();
+        return encoder.encode(text);
     }
 
-    function makeWav(buffer) {
+    // পিওর জাভাস্ক্রিপ্ট মডুলেশন ইঞ্জিন (Gibberlink/GGWave অল্টারনেটিভ এফএসকে মডুলেটর)
+    function modulateText(text, sampleRate) {
+        const data = textToBinary(text);
+        const baseFreq = 1200; // বেস ফ্রিকোয়েন্সি 
+        const freqStep = 200;  // প্রতি বিটের ফ্রিকোয়েন্সি গ্যাপ
+        const durationPerByte = 0.08; // প্রতি বাইটের স্থায়িত্ব (সেকেন্ডে)
+        const numSamplesPerByte = Math.floor(sampleRate * durationPerByte);
+        const totalSamples = numSamplesPerByte * (data.length + 2); // প্রোটোকল প্রিলুড সহ
+        
+        const buffer = new Float32Array(totalSamples);
+        
+        // সিগন্যাল প্রি-অ্যাম্বল (শুরু করার টোন)
+        for (let i = 0; i < numSamplesPerByte; i++) {
+            buffer[i] = Math.sin(2 * Math.PI * 1500 * (i / sampleRate));
+        }
+
+        // মূল ডেটা মডুলেশন প্রক্রিয়া
+        for (let b = 0; b < data.length; b++) {
+            const byteValue = data[b];
+            const frequency = baseFreq + (byteValue * 4); // ডাইনামিক অডিও ফ্রিকোয়েন্সি অ্যাসাইনমেন্ট
+            const startIdx = numSamplesPerByte * (b + 1);
+            
+            for (let i = 0; i < numSamplesPerByte; i++) {
+                // স্মুথ ট্রানজিশনের জন্য সাইন ওয়েভ জেনারেট করা
+                buffer[startIdx + i] = Math.sin(2 * Math.PI * frequency * (i / sampleRate));
+            }
+        }
+
+        // সিগন্যাল পোস্ট-অ্যাম্বল (শেষ করার টোন)
+        const endIdx = numSamplesPerByte * (data.length + 1);
+        for (let i = 0; i < numSamplesPerByte; i++) {
+            buffer[endIdx + i] = Math.sin(2 * Math.PI * 800 * (i / sampleRate));
+        }
+
+        return buffer;
+    }
+
+    // রিজিড WAV হেডার বিল্ডার এ্যালগরিদম
+    function makeWav(buffer, sampleRate) {
         const len = buffer.length * 2;
         const view = new DataView(new ArrayBuffer(44 + len));
         const str = (pos, s) => { for (let i=0; i<s.length; i++) view.setUint8(pos+i, s.charCodeAt(i)); };
         
         str(0, 'RIFF'); view.setUint32(4, 36 + len, true); str(8, 'WAVE'); str(12, 'fmt ');
         view.setUint32(16, 16, true); view.setUint16(20, 1, true); view.setUint16(22, 1, true);
-        view.setUint32(24, 48000, true); view.setUint32(28, 96000, true); view.setUint16(32, 2, true);
+        view.setUint32(24, sampleRate, true); view.setUint32(28, sampleRate * 2, true); view.setUint16(32, 2, true);
         view.setUint16(34, 16, true); str(36, 'data'); view.setUint32(40, len, true);
 
         for (let i=0, p=44; i<buffer.length; i++, p+=2) {
@@ -111,33 +138,36 @@
 
     dom.pBtn.addEventListener('click', () => {
         const val = dom.txt.value.trim();
-        if (!val) return;
-        if (!App.ctx) App.ctx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 48000 });
+        if (!val) { dom.txt.focus(); return; }
+        
+        const sampleRate = 44100;
+        if (!App.ctx) App.ctx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: sampleRate });
 
         try {
-            const wave = App.gg.encode(App.inst, val, 1, 10);
-            if (!wave || wave.length === 0) return;
+            // নিজস্ব ইঞ্জিনে অডিও জেনারেট করা
+            const wave = modulateText(val, sampleRate);
 
-            const buf = App.ctx.createBuffer(1, wave.length, 48000);
+            const buf = App.ctx.createBuffer(1, wave.length, sampleRate);
             buf.getChannelData(0).set(wave);
             const src = App.ctx.createBufferSource();
             src.buffer = buf; src.connect(App.ctx.destination); src.start();
 
-            App.blob = makeWav(wave);
+            App.wavBlob = makeWav(wave, sampleRate);
             dom.dBtn.style.display = 'flex';
-        } catch (e) { console.error(e); }
+        } catch (e) { 
+            console.error(e); 
+            alert("অডিও প্রসেসিং সমস্যা হয়েছে।");
+        }
     });
 
     dom.dBtn.addEventListener('click', () => {
-        if (!App.blob) return;
-        const url = URL.createObjectURL(App.blob);
+        if (!App.wavBlob) return;
+        const url = URL.createObjectURL(App.wavBlob);
         const a = document.createElement('a');
-        a.href = url; a.download = `gibberlink_${Date.now()}.wav`;
+        a.href = url; a.download = `gibberlink_signal_${Date.now()}.wav`;
         document.body.appendChild(a); a.click();
         document.body.removeChild(a); URL.revokeObjectURL(url);
     });
-
-    document.addEventListener('DOMContentLoaded', init);
 </script>
 </body>
 </html>

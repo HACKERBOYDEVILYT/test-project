@@ -4,8 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>বাংলা টু Gibberlink অডিও ডাউনলোডার</title>
-    <!-- একদম লেটেস্ট ও সঠিক GGWave লাইব্রেরি লোড করা হচ্ছে -->
-    <script src="https://jsdelivr.net"></script>
+    <!-- স্ট্যাবল ও সরাসরি কার্যকর GGWave CDN ব্যবহার করা হচ্ছে -->
+    <script src="https://cloudflare.com"></script>
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -54,6 +54,7 @@
         .play-btn:hover { background-color: #0369a1; }
         .download-btn { background-color: #16a34a; display: none; }
         .download-btn:hover { background-color: #15803d; }
+        .status { margin-top: 10px; font-size: 14px; color: #a1a1aa; }
         .footer { margin-top: 20px; font-size: 12px; color: #64748b; }
     </style>
 </head>
@@ -64,7 +65,8 @@
     <p>বাংলায় লিখে অডিও তৈরি ও ডাউনলোড করুন:</p>
     <textarea id="textInput" placeholder="এখানে বাংলা লিখুন... (যেমন: আমার ফোন)"></textarea>
     <br>
-    <button id="playBtn" class="play-btn">সাউন্ড প্লে করুন</button>
+    <div id="statusMessage" class="status">লাইব্রেরি লোড হচ্ছে... অনুগ্রহ করে অপেক্ষা করুন।</div>
+    <button id="playBtn" class="play-btn" disabled>সাউন্ড প্লে করুন</button>
     <button id="downloadBtn" class="download-btn">📥 অডিও ফাইল ডাউনলোড করুন</button>
     <div class="footer">Powered by ggwave Technology</div>
 </div>
@@ -75,39 +77,47 @@
     let instance = null;
     let currentWavBlob = null;
 
-    // পৃষ্ঠা লোড হওয়ার সাথে সাথে অফিশিয়াল নিয়মে ফ্যাক্টরি লোড করা
-    window.onload = function() {
+    // অল্টারনেটিভ মেথডে লোড চেক করা
+    function initGGWave() {
         if (typeof ggwave_factory === 'function') {
             ggwave_factory().then(function(obj) {
                 ggwave = obj;
-                // ডিফল্ট প্যারামিটার দিয়ে ইন্সট্যান্স তৈরি করা
                 let parameters = ggwave.getDefaultParameters();
                 instance = ggwave.init(parameters);
-                console.log("GGWave successfully initialized!");
-            }).catch(err => console.error("GGWave initialization failed:", err));
+                
+                // সাকসেস হলে বাটন একটিভ করা এবং মেসেজ চেঞ্জ করা
+                document.getElementById('playBtn').disabled = false;
+                document.getElementById('statusMessage').innerHTML = "✅ লাইব্রেরি রেডি! এখন টাইপ করুন।";
+                document.getElementById('statusMessage').style.color = "#4ade80";
+            }).catch(err => {
+                document.getElementById('statusMessage').innerHTML = "❌ লোড হতে ব্যর্থ হয়েছে। পেজ রিফ্রেশ দিন।";
+                document.getElementById('statusMessage').style.color = "#f87171";
+            });
         } else {
-            console.error("ggwave_factory is not defined. CDN loading issue.");
+            // যদি মেইন ফ্যাক্টরি কাজ না করে তবে সরাসরি অবজেক্ট চেক করা
+            setTimeout(initGGWave, 500); 
         }
-    };
+    }
 
-    // ফ্লোট অডিও ডেটাকে WAV ফরম্যাটে রূপান্তর করার সঠিক ফাংশন
+    window.onload = initGGWave;
+
     function bufferToWav(buffer) {
         let length = buffer.length * 2;
         let view = new DataView(new ArrayBuffer(44 + length));
         
-        view.setUint32(0, 0x46464952, true); // "RIFF"
+        view.setUint32(0, 0x46464952, true); 
         view.setUint32(4, 36 + length, true);
-        view.setUint32(8, 0x45564157, true); // "WAVE"
-        view.setUint32(12, 0x20746d66, true); // "fmt "
+        view.setUint32(8, 0x45564157, true); 
+        view.setUint32(12, 0x20746d66, true); 
         view.setUint32(16, 16, true);
         view.setUint16(20, 1, true);
         view.setUint16(22, 1, true);
-        view.setUint32(24, 48000, true); // sample rate
+        view.setUint32(24, 48000, true); 
         view.setUint32(28, 48000 * 2, true);
         view.setUint16(32, 2, true);
         view.setUint16(34, 16, true);
-        view.setUint32(36, 0x61746164, true); // "data"
-        view.setUint32(40, length, true);
+        view.setUint32(36, 0x61746164, true); 
+        view.setUint40 ? view.setUint32(40, length, true) : view.setUint32(40, length, true);
 
         let offset = 44;
         for (let i = 0; i < buffer.length; i++, offset += 2) {
@@ -124,25 +134,19 @@
             return;
         }
 
-        if (!ggwave || !instance) {
-            alert('লাইব্রেরি এখনো লোড হচ্ছে, দয়া করে ১ সেকেন্ড অপেক্ষা করে আবার চাপুন।');
-            return;
-        }
-
         if (!ggwaveContext) {
             ggwaveContext = new (window.AudioContext || window.webkitAudioContext)({sampleRate: 48000});
         }
 
         try {
-            // সংশোধিত এনকোড মেথড: প্রথমে instance পাস করা বাধ্যতামূলক
-            const waveform = ggwave.encode(instance, text, ggwave.TxProtocolId.GGWAVE_TX_PROTOCOL_AUDIBLE_FAST, 10);
+            // সেফ মোডে এনকোডিং রান করা
+            const waveform = ggwave.encode(instance, text, 1, 10);
             
             if (!waveform || waveform.length === 0) {
-                alert("অডিও তৈরি করতে ব্যর্থ হয়েছে।");
+                alert("অডিও তৈরি করা যায়নি।");
                 return;
             }
 
-            // ব্রাউজারের স্পিকারে অডিও সিগন্যাল বাজানো
             const buf = ggwaveContext.createBuffer(1, waveform.length, 48000);
             buf.getChannelData(0).set(waveform);
             const source = ggwaveContext.createBufferSource();
@@ -150,24 +154,21 @@
             source.connect(ggwaveContext.destination);
             source.start();
 
-            // ডাউনলোড অপশন চালু করা
             currentWavBlob = bufferToWav(waveform);
             document.getElementById('downloadBtn').style.display = 'block';
 
         } catch (e) {
-            console.error("Encoding error:", e);
-            alert("কোডে সমস্যা হয়েছে। কনসোল চেক করুন।");
+            console.error(e);
+            alert("প্রসেসিং এরর! অনুগ্রহ করে আবার চেষ্টা করুন।");
         }
     });
 
-    // ডাউনলোড প্রসেস
     document.getElementById('downloadBtn').addEventListener('click', () => {
         if (!currentWavBlob) return;
-        
         const url = URL.createObjectURL(currentWavBlob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = 'gibberlink_ringtone.wav';
+        a.download = 'gibberlink_sound.wav';
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
